@@ -1,6 +1,7 @@
 import { io } from "socket.io-client";
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:3001";
+// Use the socket URL if provided, otherwise fallback to the API URL or localhost
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 let socket = null;
 
@@ -14,8 +15,8 @@ export function connectSocket(token) {
   socket = io(SOCKET_URL, {
     auth: { token },
     transports: ["websocket"],
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000,
+    reconnectionAttempts: 8,
+    reconnectionDelay: 2000,
   });
 
   socket.on("connect", () => console.log("🔌 Socket connected:", socket.id));
