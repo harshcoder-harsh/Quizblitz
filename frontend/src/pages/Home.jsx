@@ -195,13 +195,19 @@ export default function Home() {
                   )}
                   <div>
                     <label className="text-sm text-gray-400 mb-1.5 block">Select Quiz Library</label>
-                    <select className="input" value={createForm.categoryId}
-                      onChange={(e) => setCreateForm({ ...createForm, categoryId: e.target.value })}>
-                        <option value="">Select a library...</option>
-                      {categories.map((c) => (
-                        <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
-                      ))}
-                    </select>
+                    {categories.length === 0 ? (
+                      <div className="p-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 text-sm">
+                        You have no quizzes in your library! Upload a CSV below to get started. 📚
+                      </div>
+                    ) : (
+                      <select className="input" value={createForm.categoryId}
+                        onChange={(e) => setCreateForm({ ...createForm, categoryId: e.target.value })}>
+                          <option value="">Select a library...</option>
+                        {categories.map((c) => (
+                          <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>

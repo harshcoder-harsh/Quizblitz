@@ -5,13 +5,13 @@ const { authMiddleware, optionalAuth } = require("../middleware/auth");
 
 router.get("/categories", optionalAuth, async (req, res) => {
   try {
-    // Determine the user's private library query scope
-    const filter = [{ createdBy: null }, { createdBy: { $exists: false } }];
-    if (req.user && req.user.id && !req.user.isGuest) {
-      filter.push({ createdBy: req.user.id });
+    // Exclusively return the user's private libraries.
+    // If not logged in, they see nothing.
+    if (!req.user || !req.user.id || req.user.isGuest) {
+       return res.json({ categories: [] });
     }
 
-    const categories = await Category.find({ $or: filter }).sort({ name: 1 });
+    const categories = await Category.find({ createdBy: req.user.id }).sort({ name: 1 });
     
     const categoriesWithCount = await Promise.all(
       categories.map(async (cat) => {
