@@ -1,11 +1,17 @@
 const router = require("express").Router();
 const Question = require("../models/Question");
 const Category = require("../models/Category");
-const { authMiddleware } = require("../middleware/auth");
+const { authMiddleware, optionalAuth } = require("../middleware/auth");
 
-router.get("/categories", async (_req, res) => {
+router.get("/categories", optionalAuth, async (req, res) => {
   try {
-    const categories = await Category.find().sort({ name: 1 });
+    // Determine the user's private library query scope
+    const filter = [{ createdBy: null }, { createdBy: { $exists: false } }];
+    if (req.user && req.user.id && !req.user.isGuest) {
+      filter.push({ createdBy: req.user.id });
+    }
+
+    const categories = await Category.find({ $or: filter }).sort({ name: 1 });
     
     const categoriesWithCount = await Promise.all(
       categories.map(async (cat) => {
@@ -85,14 +91,15 @@ router.post("/import", authMiddleware, async (req, res) => {
       try {
         let importedCount = 0;
         
-        // 1. Ensure the Library/Category exists exactly once for this CSV upload
-        let cat = await Category.findOne({ name: { $regex: new RegExp(`^${quizName}$`, 'i') } });
+        // 1. Ensure the Library/Category exists exactly once for this CSV upload scopes exclusively to the user
+        let cat = await Category.findOne({ name: { $regex: new RegExp(`^${quizName}$`, 'i') }, createdBy: req.user.id });
         if (!cat) {
           cat = await Category.create({
             name: quizName,
-            slug: quizName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+            slug: quizName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + req.user.id.slice(-6),
             icon: '📚', // Default icon for imported libraries
-            color: '#8884d8'
+            color: '#8884d8',
+            createdBy: req.user.id
           });
         }
 

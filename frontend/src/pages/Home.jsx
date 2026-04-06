@@ -31,10 +31,18 @@ export default function Home() {
 
   const { loginAsGuest } = useAuthStore();
 
+  const fetchCategories = async () => {
+    try {
+      const hdrs = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+      const { data } = await axios.get(`${API}/api/questions/categories`, hdrs);
+      setCategories(data.categories);
+    } catch {}
+  };
+
   useEffect(() => {
-    axios.get(`${API}/api/questions/categories`).then((r) => setCategories(r.data.categories)).catch(() => {});
+    fetchCategories();
     axios.get(`${API}/api/rooms`).then((r) => setPublicRooms(r.data.rooms)).catch(() => {});
-  }, []);
+  }, [token]);
 
   async function handleJoin(e) {
     e.preventDefault();
