@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String       @id @default(uuid())
+  username     String       @unique
+  email        String       @unique
+  passwordHash String
+  avatar       String?
+  totalScore   Int          @default(0)
+  gamesPlayed  Int          @default(0)
+  createdAt    DateTime     @default(now())
+  gameResults  GameResult[]
+}
+
+model Category {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+  slug      String     @unique
+  icon      String
+  color     String
+  questions Question[]
+  rooms     Room[]
+}
+
+model Question {
+  id           Int          @id @default(autoincrement())
+  categoryId   Int
+  subTopic     String
+  questionText String
+  difficulty   Difficulty
+  type         QuestionType @default(MULTIPLE_CHOICE)
+  explanation  String?
+  referenceUrl String?
+  tags         String[]
+  reportCount  Int          @default(0)
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  category     Category     @relation(fields: [categoryId], references: [id])
+  options      Option[]
+}
+
+model Option {
+  id         Int      @id @default(autoincrement())
+  questionId Int
+  optionText String
+  isCorrect  Boolean
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+model Room {
+  id            String       @id @default(uuid())
+  code          String       @unique
+  hostId        String
+  categoryId    Int
+  status        RoomStatus   @default(WAITING)
+  maxPlayers    Int          @default(10)
+  timerSeconds  Int          @default(20)
+  difficulty    Difficulty   @default(MEDIUM)
+  questionCount Int          @default(10)
+  isPublic      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  category      Category     @relation(fields: [categoryId], references: [id])
+  gameResults   GameResult[]
+}
+
+model GameResult {
+  id          Int      @id @default(autoincrement())
+  roomId      String
+  userId      String
+  score       Int
+  rank        Int
+  correctAns  Int      @default(0)
+  wrongAns    Int      @default(0)
+  completedAt DateTime @default(now())
+  room        Room     @relation(fields: [roomId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+enum RoomStatus {
+  WAITING
+  ACTIVE
+  FINISHED
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  CODE_OUTPUT
+}
