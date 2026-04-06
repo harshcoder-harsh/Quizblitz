@@ -1,26 +1,27 @@
-const Redis = require("ioredis");
-
-const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379", {
-  lazyConnect: true,
-  retryStrategy: (times) => Math.min(times * 50, 2000),
-});
-
-redis.on("connect", () => console.log("✅ Redis connected"));
-redis.on("error", (err) => console.error("❌ Redis error:", err.message));
-
-const ROOM_TTL = 60 * 60 * 4; 
+// In-memory Room State Store (Replacing Redis)
+const rooms = new Map();
+const ROOM_TTL_MS = 1000 * 60 * 60 * 4; // 4 hours
 
 async function setRoomState(code, state) {
-  await redis.setex(`room:${code}`, ROOM_TTL, JSON.stringify(state));
+  // Add an expiry timestamp
+  const expiry = Date.now() + ROOM_TTL_MS;
+  rooms.set(code, { state, expiry });
 }
 
 async function getRoomState(code) {
-  const data = await redis.get(`room:${code}`);
-  return data ? JSON.parse(data) : null;
+  const entry = rooms.get(code);
+  if (!entry) return null;
+  
+  if (Date.now() > entry.expiry) {
+    rooms.delete(code);
+    return null;
+  }
+  
+  return entry.state;
 }
 
 async function deleteRoomState(code) {
-  await redis.del(`room:${code}`);
+  rooms.delete(code);
 }
 
 async function updateRoomState(code, updater) {
@@ -31,4 +32,12 @@ async function updateRoomState(code, updater) {
   return updated;
 }
 
-module.exports = { redis, setRoomState, getRoomState, deleteRoomState, updateRoomState };
+// Optional periodic cleanup
+setInterval(() => {
+  const now = Date.now();
+  for (const [code, entry] of rooms.entries()) {
+    if (now > entry.expiry) rooms.delete(code);
+  }
+}, 1000 * 60 * 60);
+
+module.exports = { setRoomState, getRoomState, deleteRoomState, updateRoomState };
