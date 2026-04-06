@@ -26,6 +26,7 @@ export default function Home() {
   const [publicRooms, setPublicRooms] = useState([]);
   const [createForm, setCreateForm] = useState({ categoryId: "", difficulty: "MEDIUM", questionCount: 10, timerSeconds: 20, isPublic: true });
   const [loading, setLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const { loginAsGuest } = useAuthStore();
 
@@ -53,7 +54,7 @@ export default function Home() {
     setLoading(true);
     try {
       const { data } = await axios.post(`${API}/api/rooms`, {
-        categoryId: parseInt(createForm.categoryId),
+        categoryId: createForm.categoryId,
         difficulty: createForm.difficulty,
         questionCount: parseInt(createForm.questionCount),
         timerSeconds: parseInt(createForm.timerSeconds),
@@ -64,6 +65,33 @@ export default function Home() {
       toast.error(err.response?.data?.error || "Failed to create room");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleCsvUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append("file", file);
+    
+    setImporting(true);
+    try {
+      const { data } = await axios.post(`${API}/api/questions/import`, formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data" 
+        }
+      });
+      toast.success(data.message);
+      // Refresh categories
+      const { data: catData } = await axios.get(`${API}/api/questions/categories`);
+      setCategories(catData.categories);
+    } catch (err) {
+      toast.error(err.response?.data?.error || "Failed to import CSV");
+    } finally {
+      setImporting(false);
+      e.target.value = ""; // Clear file input
     }
   }
 
@@ -190,6 +218,18 @@ export default function Home() {
                   <button type="submit" disabled={loading || !token} className="btn-primary btn w-full text-base py-3">
                     {loading ? "Creating..." : "Create Room 🏠"}
                   </button>
+
+                  {/* Bulk Import UI */}
+                  {token && (
+                    <div className="mt-4 pt-4 border-t border-surface-700">
+                      <p className="text-xs text-gray-500 mb-2 text-center uppercase tracking-wider font-semibold">Or bulk import your own quiz</p>
+                      <label className={`btn-secondary btn w-full text-sm py-2 ${importing ? "opacity-50 cursor-wait" : "cursor-pointer"}`}>
+                        {importing ? "Importing..." : "📥 Upload CSV Quiz"}
+                        <input type="file" accept=".csv" className="hidden" onChange={handleCsvUpload} disabled={importing} />
+                      </label>
+                      <p className="text-[10px] text-gray-500 mt-2 text-center">Format: category, subTopic, questionText, difficulty, option1, option2, option3, option4, correctIndex, explanation</p>
+                    </div>
+                  )}
                 </motion.form>
               )}
             </AnimatePresence>

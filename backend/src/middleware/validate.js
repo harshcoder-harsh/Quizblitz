@@ -25,7 +25,7 @@ const schemas = {
     password: z.string().min(1),
   }),
   createRoom: z.object({
-    categoryId: z.number().int().positive(),
+    categoryId: z.string(),
     isPublic: z.boolean().optional().default(true),
     maxPlayers: z.number().int().min(2).max(20).optional().default(10),
     timerSeconds: z.number().int().min(10).max(30).optional().default(20),

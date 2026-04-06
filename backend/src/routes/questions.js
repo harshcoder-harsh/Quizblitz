@@ -63,4 +63,62 @@ router.post("/report/:id", authMiddleware, async (req, res) => {
   }
 });
 
+const csv = require("csv-parser");
+const { Readable } = require("stream");
+
+router.post("/import", authMiddleware, async (req, res) => {
+  if (!req.files || !req.files.file) {
+    return res.status(400).json({ error: "No file uploaded" });
+  }
+
+  const results = [];
+  const stream = Readable.from(req.files.file.data.toString());
+
+  stream
+    .pipe(csv())
+    .on("data", (data) => results.push(data))
+    .on("end", async () => {
+      try {
+        let importedCount = 0;
+        for (const row of results) {
+          let { category, subTopic, questionText, difficulty, option1, option2, option3, option4, correctIndex, explanation } = row;
+          
+          if (!category || !questionText || !option1 || !correctIndex) continue;
+
+          let cat = await Category.findOne({ name: { $regex: new RegExp(`^${category}$`, 'i') } });
+          if (!cat) {
+            cat = await Category.create({
+              name: category,
+              slug: category.toLowerCase().replace(/ /g, '-'),
+              icon: category.substring(0, 2).toUpperCase(),
+              color: '#8884d8'
+            });
+          }
+
+          const options = [
+            { optionText: option1, isCorrect: parseInt(correctIndex) === 0 },
+            { optionText: option2, isCorrect: parseInt(correctIndex) === 1 },
+            { optionText: option3, isCorrect: parseInt(correctIndex) === 2 },
+            { optionText: option4, isCorrect: parseInt(correctIndex) === 3 },
+          ].filter(o => o.optionText);
+
+          await Question.create({
+            categoryId: cat._id,
+            subTopic: subTopic || 'General',
+            questionText,
+            difficulty: (difficulty || 'MEDIUM').toUpperCase(),
+            options,
+            explanation,
+            isActive: true
+          });
+          importedCount++;
+        }
+        res.json({ message: `Successfully imported ${importedCount} questions!` });
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to process CSV data" });
+      }
+    });
+});
+
 module.exports = router;

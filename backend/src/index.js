@@ -14,6 +14,8 @@ const leaderboardRoutes = require("./routes/leaderboard");
 connectDB();
 
 const app = express();
+const fileUpload = require("express-fileupload");
+app.use(fileUpload());
 const httpServer = http.createServer(app);
 
 const io = new Server(httpServer, {
