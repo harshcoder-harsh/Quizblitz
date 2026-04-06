@@ -8,6 +8,6 @@ const userSchema = new mongoose.Schema({
   totalScore: { type: Number, default: 0 },
   gamesPlayed: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now },
-});
+}, { toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
 module.exports = mongoose.model('User', userSchema);

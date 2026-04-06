@@ -11,6 +11,6 @@ const roomSchema = new mongoose.Schema({
   questionCount: { type: Number, default: 10 },
   isPublic: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now },
-});
+}, { toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
 module.exports = mongoose.model('Room', roomSchema);

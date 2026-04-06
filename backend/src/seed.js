@@ -7,64 +7,52 @@ const categories = [
   { name: 'JavaScript', slug: 'javascript', icon: 'JS', color: '#f7df1e' },
   { name: 'React', slug: 'react', icon: 'React', color: '#61dafb' },
   { name: 'Node.js', slug: 'node', icon: 'Node.js', color: '#339933' },
-  { name: 'Python', slug: 'python', icon: 'Python', color: '#3776ab' }
+  { name: 'General Tech', slug: 'general', icon: 'Tech', color: '#8884d8' }
 ];
 
-const seedQuestions = [
-  {
-    categoryName: 'JavaScript',
-    subTopic: 'Basics',
-    questionText: 'What is the correct way to declare a constant in JavaScript?',
-    difficulty: 'EASY',
-    type: 'MULTIPLE_CHOICE',
-    explanation: 'const is used to declare variables that cannot be reassigned.',
-    options: [
-      { optionText: 'var', isCorrect: false },
-      { optionText: 'let', isCorrect: false },
-      { optionText: 'const', isCorrect: true },
-      { optionText: 'constant', isCorrect: false }
-    ]
-  },
-  {
-    categoryName: 'React',
-    subTopic: 'Hooks',
-    questionText: 'Which hook would you use to perform a side effect in React?',
-    difficulty: 'EASY',
-    type: 'MULTIPLE_CHOICE',
-    explanation: 'useEffect is designed for synchronization and side effects.',
-    options: [
-      { optionText: 'useState', isCorrect: false },
-      { optionText: 'useEffect', isCorrect: true },
-      { optionText: 'useContext', isCorrect: false },
-      { optionText: 'useMemo', isCorrect: false }
-    ]
+const difficulties = ['EASY', 'MEDIUM', 'HARD'];
+
+const generateQuestions = (catId, count) => {
+  const qs = [];
+  for (let i = 1; i <= count; i++) {
+    qs.push({
+      categoryId: catId,
+      subTopic: 'Basics',
+      questionText: `Sample question ${i} for this category?`,
+      difficulty: difficulties[Math.floor(Math.random() * 2)], // Mostly EASY and MEDIUM
+      type: 'MULTIPLE_CHOICE',
+      explanation: 'Detailed explanation for this question.',
+      options: [
+        { optionText: 'Option A (Correct)', isCorrect: true },
+        { optionText: 'Option B', isCorrect: false },
+        { optionText: 'Option C', isCorrect: false },
+        { optionText: 'Option D', isCorrect: false }
+      ]
+    });
   }
-];
+  return qs;
+};
 
 async function seed() {
   try {
     await mongoose.connect(process.env.DATABASE_URL);
-    console.log('📡 Connected to MongoDB for seeding...');
+    console.log('📡 Connected for expanded seeding...');
 
-    // Clear existing
     await Category.deleteMany({});
     await Question.deleteMany({});
 
-    // Seed Categories
-    const seededCategories = await Category.insertMany(categories);
-    console.log(`✅ Seeded ${seededCategories.length} categories.`);
+    const seededCats = await Category.insertMany(categories);
+    console.log(`✅ Seeded ${seededCats.length} categories.`);
 
-    // Seed Questions
-    for (const qData of seedQuestions) {
-      const { categoryName, ...q } = qData;
-      const cat = seededCategories.find(c => c.name === categoryName);
-      if (cat) {
-        await Question.create({ ...q, categoryId: cat._id });
-      }
+    let qCount = 0;
+    for (const cat of seededCats) {
+      const qs = generateQuestions(cat._id, 15); // 15 questions per category
+      await Question.insertMany(qs);
+      qCount += qs.length;
     }
-    console.log(`✅ Seeded ${seedQuestions.length} questions.`);
 
-    console.log('🚀 Seeding complete! Your app is ready.');
+    console.log(`✅ Seeded ${qCount} questions total.`);
+    console.log('🚀 Seeding complete! Try creating a room now.');
     process.exit(0);
   } catch (err) {
     console.error('❌ Seeding error:', err);
