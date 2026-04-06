@@ -116,9 +116,21 @@ router.post("/import", authMiddleware, async (req, res) => {
 
           if (!questionText || !opt1 || !correctKey) continue;
 
-          // Handle correctIndex = 1,2,3,4 (1-based) vs 0,1,2,3 (0-based)
-          let cIndex = parseInt(correctKey);
-          if (cIndex > 0) cIndex -= 1;
+          // Robustly parse the correct option index (handling 0-3, 1-4, or A, B, C, D)
+          let cIndex = 0;
+          if (typeof correctKey === 'string' || typeof correctKey === 'number') {
+            const strKey = String(correctKey).trim().toUpperCase();
+            if (strKey === 'A' || strKey === '1' || strKey === 'OPTION A') cIndex = 0;
+            else if (strKey === 'B' || strKey === '2' || strKey === 'OPTION B') cIndex = 1;
+            else if (strKey === 'C' || strKey === '3' || strKey === 'OPTION C') cIndex = 2;
+            else if (strKey === 'D' || strKey === '4' || strKey === 'OPTION D') cIndex = 3;
+            else {
+              const raw = parseInt(strKey);
+              if (!isNaN(raw) && raw >= 0) {
+                cIndex = raw > 0 && raw <= 4 ? raw - 1 : 0;
+              }
+            }
+          }
 
           const options = [
             { optionText: opt1, isCorrect: cIndex === 0 },
@@ -127,7 +139,7 @@ router.post("/import", authMiddleware, async (req, res) => {
             { optionText: opt4, isCorrect: cIndex === 3 },
           ].filter(o => o.optionText);
 
-          // Failsafe
+          // Failsafe (fallback to A if somehow everything failed)
           if (!options.some(o => o.isCorrect) && options.length > 0) {
             options[0].isCorrect = true;
           }
