@@ -234,6 +234,12 @@ export default function Home() {
                         {[10, 15, 20, 25, 30].map((n) => <option key={n} value={n}>{n} seconds</option>)}
                     </select>
                   </div>
+                  <div className="flex items-center gap-3 p-3 mt-2 rounded-lg bg-brand-500/10 border border-brand-500/20">
+                    <input type="checkbox" id="teacherMode" className="w-5 h-5 accent-brand-500" checked={createForm.isTeacherMode} onChange={(e) => setCreateForm({...createForm, isTeacherMode: e.target.checked})} />
+                    <label htmlFor="teacherMode" className="text-sm font-medium text-brand-300 select-none cursor-pointer">
+                      👩‍🏫 Enable Teacher Mode (Host without playing)
+                    </label>
+                  </div>
                   <button type="submit" disabled={loading || !token} className="btn-primary btn w-full text-base py-3">
                     {loading ? "Creating..." : "Create Room 🏠"}
                   </button>

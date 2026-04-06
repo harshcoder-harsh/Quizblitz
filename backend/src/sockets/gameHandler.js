@@ -33,22 +33,29 @@ function registerGameHandlers(io, socket) {
 
       socket.join(code);
 
-      await updateRoomState(code, (s) => ({
-        ...s,
-        players: {
-          ...s.players,
-          [user.id]: {
-            id: user.id,
-            username: user.username,
-            isGuest: user.isGuest || false,
-            score: 0,
-            correctAns: 0,
-            wrongAns: 0,
-            socketId: socket.id,
-            rank: playerCount + 1,
+      const isTeacher = room.isTeacherMode && user.id === room.hostId.toString();
+
+      await updateRoomState(code, (s) => {
+        if (isTeacher) {
+          return { ...s, instructor: { id: user.id, socketId: socket.id } };
+        }
+        return {
+          ...s,
+          players: {
+            ...s.players,
+            [user.id]: {
+              id: user.id,
+              username: user.username,
+              isGuest: user.isGuest || false,
+              score: 0,
+              correctAns: 0,
+              wrongAns: 0,
+              socketId: socket.id,
+              rank: playerCount + 1,
+            },
           },
-        },
-      }));
+        };
+      });
 
       const updated = await getRoomState(code);
       const players = Object.values(updated.players);
@@ -120,7 +127,11 @@ function registerGameHandlers(io, socket) {
 
       io.to(code).emit("gameStarted", { totalQuestions: questions.length, settings: state.settings });
 
-      setTimeout(() => sendNextQuestion(io, code), 1000);
+      if (!state.settings.isTeacherMode) {
+        setTimeout(() => sendNextQuestion(io, code), 1000);
+      } else {
+        socket.emit("teacherReadyToStart", {}); // signals the dash to allow manual 'Next'
+      }
     } catch (err) {
       console.error("startGame error:", err);
       socket.emit("error", { message: "Failed to start game" });
@@ -215,6 +226,31 @@ function registerGameHandlers(io, socket) {
       console.error("reportQuestion error:", err);
     }
   });
+
+  // TEACHER CONTROLS
+  socket.on("teacherNext", async ({ code }) => {
+    try {
+      const s = await getRoomState(code);
+      if (!s || s.hostId.toString() !== user.id.toString() || !s.settings.isTeacherMode) return;
+      sendNextQuestion(io, code);
+    } catch(err) {}
+  });
+
+  socket.on("teacherReveal", async ({ code }) => {
+    try {
+      const s = await getRoomState(code);
+      if (!s || s.hostId.toString() !== user.id.toString() || !s.settings.isTeacherMode) return;
+      revealAndAdvance(io, code);
+    } catch(err) {}
+  });
+
+  socket.on("teacherEndGame", async ({ code }) => {
+    try {
+      const s = await getRoomState(code);
+      if (!s || s.hostId.toString() !== user.id.toString() || !s.settings.isTeacherMode) return;
+      endGame(io, code);
+    } catch(err) {}
+  });
 }
 
 const roomTimers = {};
@@ -250,7 +286,9 @@ async function sendNextQuestion(io, code) {
   });
 
   clearRoomTimer(code);
-  roomTimers[code] = setTimeout(() => revealAndAdvance(io, code), timeLimit * 1000 + 500);
+  if (!state.settings.isTeacherMode) {
+    roomTimers[code] = setTimeout(() => revealAndAdvance(io, code), timeLimit * 1000 + 500);
+  }
 }
 
 async function revealAndAdvance(io, code) {
@@ -273,7 +311,9 @@ async function revealAndAdvance(io, code) {
   const leaderboard = buildLeaderboard(state.players);
   io.to(code).emit("leaderboardUpdate", leaderboard);
 
-  setTimeout(() => sendNextQuestion(io, code), 4000);
+  if (!state.settings.isTeacherMode) {
+    setTimeout(() => sendNextQuestion(io, code), 4000);
+  }
 }
 
 async function endGame(io, code) {

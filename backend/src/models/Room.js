@@ -10,6 +10,7 @@ const roomSchema = new mongoose.Schema({
   difficulty: { type: String, enum: ['EASY', 'MEDIUM', 'HARD'], default: 'MEDIUM' },
   questionCount: { type: Number, default: 10 },
   isPublic: { type: Boolean, default: true },
+  isTeacherMode: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
 }, { toJSON: { virtuals: true }, toObject: { virtuals: true } });
 

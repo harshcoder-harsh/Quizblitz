@@ -11,6 +11,7 @@ import AnswerOptions from "../components/AnswerOptions";
 import Timer from "../components/Timer";
 import Leaderboard from "../components/Leaderboard";
 import Explanation from "../components/Explanation";
+import TeacherDashboard from "../components/TeacherDashboard";
 
 export default function Game() {
   const { code } = useParams();
@@ -18,6 +19,8 @@ export default function Game() {
   const { user } = useAuthStore();
   const store = useGameStore();
   const submitTimeRef = useRef(null);
+
+  const isTeacher = store.settings?.isTeacherMode && user?.id === store.hostId;
 
   const { timeLeft, isRunning, start: startTimer, stop: stopTimer } = useTimer(
     store.timeLimit || 20,
@@ -71,6 +74,10 @@ export default function Game() {
 
   const isAnswered = !!store.selectedOptionId;
   const isRevealing = store.gameState === "revealing";
+
+  if (isTeacher) {
+    return <TeacherDashboard code={code} />;
+  }
 
   if (!store.currentQuestion) {
     return (

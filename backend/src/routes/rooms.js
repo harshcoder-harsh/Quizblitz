@@ -10,7 +10,7 @@ function generateCode() {
 }
 
 router.post("/", authMiddleware, validate(schemas.createRoom), async (req, res) => {
-  const { categoryId, isPublic, maxPlayers, timerSeconds, difficulty, questionCount } = req.body;
+  const { categoryId, isPublic, maxPlayers, timerSeconds, difficulty, questionCount, isTeacherMode } = req.body;
   try {
     const category = await Category.findById(categoryId);
     if (!category) return res.status(404).json({ error: "Category not found" });
@@ -32,7 +32,8 @@ router.post("/", authMiddleware, validate(schemas.createRoom), async (req, res) 
       maxPlayers,
       timerSeconds,
       difficulty,
-      questionCount
+      questionCount,
+      isTeacherMode
     });
 
     const populatedRoom = await Room.findById(room._id).populate('categoryId');
@@ -43,7 +44,7 @@ router.post("/", authMiddleware, validate(schemas.createRoom), async (req, res) 
       hostId: req.user.id,
       players: {},
       status: "WAITING",
-      settings: { timerSeconds, difficulty, questionCount, categoryId },
+      settings: { timerSeconds, difficulty, questionCount, categoryId, isTeacherMode },
       questions: [],
       currentQuestionIndex: -1,
       answers: {},
