@@ -171,12 +171,7 @@ function registerGameHandlers(io, socket) {
       const leaderboard = buildLeaderboard(newState.players);
       io.to(code).emit("leaderboardUpdate", leaderboard);
 
-      const answerCount = Object.keys(newState.answers[qi] || {}).length;
-      const playerCount = Object.keys(newState.players).length;
-      if (answerCount >= playerCount) {
-        clearRoomTimer(code);
-        setTimeout(() => revealAndAdvance(io, code), 1500);
-      }
+      // Auto-advance early logic has been removed to ensure the timer represents the single source of truth.
     } catch (err) {
       console.error("submitAnswer error:", err);
     }

@@ -34,7 +34,7 @@ export default function Game() {
   // Socket: my answer result
   useSocket("answerResult", (result) => {
     store.setAnswerResult(result);
-    stopTimer();
+    // We strictly do NOT stop the timer here to maintain standard time sync globally.
   }, []);
 
   // Socket: reveal correct answer + explanation
