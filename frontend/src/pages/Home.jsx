@@ -27,6 +27,7 @@ export default function Home() {
   const [createForm, setCreateForm] = useState({ categoryId: "", difficulty: "MEDIUM", questionCount: 10, timerSeconds: 20, isPublic: true });
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [importName, setImportName] = useState("");
 
   const { loginAsGuest } = useAuthStore();
 
@@ -74,6 +75,9 @@ export default function Home() {
     
     const formData = new FormData();
     formData.append("file", file);
+    if (importName.trim()) {
+      formData.append("quizName", importName.trim());
+    }
     
     setImporting(true);
     try {
@@ -87,6 +91,7 @@ export default function Home() {
       // Refresh categories
       const { data: catData } = await axios.get(`${API}/api/questions/categories`);
       setCategories(catData.categories);
+      setImportName(""); // reset
     } catch (err) {
       toast.error(err.response?.data?.error || "Failed to import CSV");
     } finally {
@@ -181,10 +186,10 @@ export default function Home() {
                     </div>
                   )}
                   <div>
-                    <label className="text-sm text-gray-400 mb-1.5 block">Category</label>
+                    <label className="text-sm text-gray-400 mb-1.5 block">Select Quiz Library</label>
                     <select className="input" value={createForm.categoryId}
                       onChange={(e) => setCreateForm({ ...createForm, categoryId: e.target.value })}>
-                      <option value="">Select a category...</option>
+                        <option value="">Select a library...</option>
                       {categories.map((c) => (
                         <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
                       ))}
@@ -212,7 +217,7 @@ export default function Home() {
                     <label className="text-sm text-gray-400 mb-1.5 block">Timer per question</label>
                     <select className="input" value={createForm.timerSeconds}
                       onChange={(e) => setCreateForm({ ...createForm, timerSeconds: e.target.value })}>
-                      {[10, 15, 20, 25, 30].map((n) => <option key={n} value={n}>{n} seconds</option>)}
+                        {[10, 15, 20, 25, 30].map((n) => <option key={n} value={n}>{n} seconds</option>)}
                     </select>
                   </div>
                   <button type="submit" disabled={loading || !token} className="btn-primary btn w-full text-base py-3">
@@ -221,13 +226,19 @@ export default function Home() {
 
                   {/* Bulk Import UI */}
                   {token && (
-                    <div className="mt-4 pt-4 border-t border-surface-700">
-                      <p className="text-xs text-gray-500 mb-2 text-center uppercase tracking-wider font-semibold">Or bulk import your own quiz</p>
-                      <label className={`btn-secondary btn w-full text-sm py-2 ${importing ? "opacity-50 cursor-wait" : "cursor-pointer"}`}>
-                        {importing ? "Importing..." : "📥 Upload CSV Quiz"}
-                        <input type="file" accept=".csv" className="hidden" onChange={handleCsvUpload} disabled={importing} />
-                      </label>
-                      <p className="text-[10px] text-gray-500 mt-2 text-center">Format: category, subTopic, questionText, difficulty, option1, option2, option3, option4, correctIndex, explanation</p>
+                    <div className="mt-4 pt-4 border-t border-surface-700 bg-surface-800/50 -mx-6 -mb-6 px-6 pb-6 rounded-b-xl">
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-sm font-bold text-white">📚 Add New Quiz Library</p>
+                        <a href="/quiz-template.csv" download className="text-xs text-brand-400 hover:text-brand-300 underline font-medium">Download CSV Template</a>
+                      </div>
+                      <div className="space-y-3">
+                        <input className="input py-2 text-sm" placeholder="Name of your quiz (e.g. History 101)" value={importName} onChange={(e) => setImportName(e.target.value)} />
+                        <label className={`btn-secondary btn w-full text-sm py-2 ${importing ? "opacity-50 cursor-wait" : "cursor-pointer"}`}>
+                          {importing ? "Importing..." : "📥 Upload CSV File"}
+                          <input type="file" accept=".csv" className="hidden" onChange={handleCsvUpload} disabled={importing} />
+                        </label>
+                      </div>
+                      <p className="text-[10px] text-gray-500 mt-3 text-center">Format: question, difficulty, optionA, optionB, optionC, optionD, correctOption, explanation</p>
                     </div>
                   )}
                 </motion.form>

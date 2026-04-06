@@ -71,6 +71,7 @@ router.post("/import", authMiddleware, async (req, res) => {
     return res.status(400).json({ error: "No file uploaded" });
   }
 
+  const quizName = req.body.quizName || req.files.file.name.replace('.csv', '');
   const results = [];
   const stream = Readable.from(req.files.file.data);
 
@@ -83,49 +84,59 @@ router.post("/import", authMiddleware, async (req, res) => {
     .on("end", async () => {
       try {
         let importedCount = 0;
-        for (const row of results) {
-          let { category, subTopic, questionText, difficulty, option1, option2, option3, option4, correctIndex, explanation } = row;
-          
-          if (!category || !questionText || !option1 || !correctIndex) continue;
+        
+        // 1. Ensure the Library/Category exists exactly once for this CSV upload
+        let cat = await Category.findOne({ name: { $regex: new RegExp(`^${quizName}$`, 'i') } });
+        if (!cat) {
+          cat = await Category.create({
+            name: quizName,
+            slug: quizName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+            icon: '📚', // Default icon for imported libraries
+            color: '#8884d8'
+          });
+        }
 
-          let cat = await Category.findOne({ name: { $regex: new RegExp(`^${category}$`, 'i') } });
-          if (!cat) {
-            cat = await Category.create({
-              name: category,
-              slug: category.toLowerCase().replace(/ /g, '-'),
-              icon: category.substring(0, 2).toUpperCase(),
-              color: '#8884d8'
-            });
-          }
+        // 2. Map all rows into this specific Library/Category
+        for (const row of results) {
+          const questionText = row.question || row.questionText;
+          const diff = row.difficulty || 'MEDIUM';
+          const opt1 = row.optionA || row.option1;
+          const opt2 = row.optionB || row.option2;
+          const opt3 = row.optionC || row.option3;
+          const opt4 = row.optionD || row.option4;
+          const correctKey = row.correctOption || row.correctIndex;
+          const expl = row.explanation;
+
+          if (!questionText || !opt1 || !correctKey) continue;
 
           // Handle correctIndex = 1,2,3,4 (1-based) vs 0,1,2,3 (0-based)
-          let cIndex = parseInt(correctIndex);
-          if (cIndex > 0) cIndex -= 1; // Convert 1-4 to 0-3. If it was already 0-3 but they meant 1-based, this assumes standard user behavior inputs 1, 2, 3, or 4.
+          let cIndex = parseInt(correctKey);
+          if (cIndex > 0) cIndex -= 1;
 
           const options = [
-            { optionText: option1, isCorrect: cIndex === 0 },
-            { optionText: option2, isCorrect: cIndex === 1 },
-            { optionText: option3, isCorrect: cIndex === 2 },
-            { optionText: option4, isCorrect: cIndex === 3 },
+            { optionText: opt1, isCorrect: cIndex === 0 },
+            { optionText: opt2, isCorrect: cIndex === 1 },
+            { optionText: opt3, isCorrect: cIndex === 2 },
+            { optionText: opt4, isCorrect: cIndex === 3 },
           ].filter(o => o.optionText);
 
-          // Failsafe: if no option is marked correct, default to the first one.
+          // Failsafe
           if (!options.some(o => o.isCorrect) && options.length > 0) {
             options[0].isCorrect = true;
           }
 
           await Question.create({
             categoryId: cat._id,
-            subTopic: subTopic || 'General',
+            subTopic: 'Imported',
             questionText,
-            difficulty: (difficulty || 'MEDIUM').toUpperCase(),
+            difficulty: diff.toUpperCase(),
             options,
-            explanation,
+            explanation: expl,
             isActive: true
           });
           importedCount++;
         }
-        res.json({ message: `Successfully imported ${importedCount} questions!` });
+        res.json({ message: `Successfully added ${importedCount} questions to the "${quizName}" library!` });
       } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Failed to process CSV data" });

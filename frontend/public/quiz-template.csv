@@ -1,0 +1,4 @@
+question,difficulty,optionA,optionB,optionC,optionD,correctOption,explanation
+"What does CPU stand for?","EASY","Central Process Unit","Computer Personal Unit","Central Processing Unit","Central Processor Unit","3","The CPU is the primary component of a computer that acts as its brain."
+"Which language is primarily used for Android development?","MEDIUM","Swift","Java","C#","PHP","2","Java and Kotlin are the official languages for Android development."
+"What is the time complexity of binary search?","HARD","O(1)","O(n)","O(n log n)","O(log n)","4","Binary search halves the search space at each step, resulting in O(log n)."
