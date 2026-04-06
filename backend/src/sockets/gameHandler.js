@@ -1,18 +1,19 @@
-const { PrismaClient } = require("@prisma/client");
+const Room = require("../models/Room");
+const User = require("../models/User");
+const GameResult = require("../models/GameResult");
+const Question = require("../models/Question");
 const { getRoomState, setRoomState, updateRoomState, deleteRoomState } = require("../redis/roomState");
 const { getQuestionsForRoom } = require("../services/questionService");
 const { calculateScore, buildLeaderboard } = require("../services/scoreService");
 
-const prisma = new PrismaClient();
-
 function sanitizeQuestion(question) {
   return {
-    id: question.id,
+    id: question._id,
     questionText: question.questionText,
     type: question.type,
     difficulty: question.difficulty,
     category: question.category,
-    options: question.options.map((o) => ({ id: o.id, optionText: o.optionText })),
+    options: question.options.map((o) => ({ id: o._id, optionText: o.optionText })),
   };
 }
 
@@ -26,7 +27,7 @@ function registerGameHandlers(io, socket) {
       if (state.status !== "WAITING") return socket.emit("error", { message: "Game already in progress" });
 
       const playerCount = Object.keys(state.players).length;
-      const room = await prisma.room.findUnique({ where: { code } });
+      const room = await Room.findOne({ code });
       if (!room) return socket.emit("error", { message: "Room not found" });
       if (playerCount >= room.maxPlayers) return socket.emit("error", { message: "Room is full" });
 
@@ -87,13 +88,15 @@ function registerGameHandlers(io, socket) {
     try {
       const state = await getRoomState(code);
       if (!state) return socket.emit("error", { message: "Room not found" });
-      if (state.hostId !== user.id) return socket.emit("error", { message: "Only the host can start the game" });
+      if (state.hostId.toString() !== user.id.toString()) {
+        return socket.emit("error", { message: "Only the host can start the game" });
+      }
       if (state.status !== "WAITING") return socket.emit("error", { message: "Game already started" });
 
       const playerCount = Object.keys(state.players).length;
       if (playerCount < 1) return socket.emit("error", { message: "Need at least 1 player to start" });
 
-      const { categoryId, difficulty, questionCount, timerSeconds } = state.settings;
+      const { categoryId, difficulty, questionCount } = state.settings;
       const questions = await getQuestionsForRoom(categoryId, difficulty, questionCount);
 
       if (questions.length === 0) {
@@ -108,7 +111,7 @@ function registerGameHandlers(io, socket) {
         answers: {},
       });
 
-      await prisma.room.update({ where: { code }, data: { status: "ACTIVE" } });
+      await Room.updateOne({ code }, { status: "ACTIVE" });
 
       io.to(code).emit("gameStarted", { totalQuestions: questions.length, settings: state.settings });
 
@@ -131,7 +134,8 @@ function registerGameHandlers(io, socket) {
 
       const question = state.questions[qi];
       const correctOption = question.options.find((o) => o.isCorrect);
-      const isCorrect = correctOption && optionId === correctOption.id;
+      // Handle the case where optionId might be string or ObjectId
+      const isCorrect = correctOption && optionId.toString() === correctOption._id.toString();
       const timeLimit = state.settings.timerSeconds;
       const points = isCorrect ? calculateScore(state.settings.difficulty, timeTaken, timeLimit) : 0;
 
@@ -155,7 +159,7 @@ function registerGameHandlers(io, socket) {
       socket.emit("answerResult", {
         correct: isCorrect,
         points,
-        correctOptionId: correctOption?.id,
+        correctOptionId: correctOption?._id,
       });
 
       const newState = await getRoomState(code);
@@ -176,7 +180,7 @@ function registerGameHandlers(io, socket) {
   socket.on("kickPlayer", async ({ code, userId }) => {
     try {
       const state = await getRoomState(code);
-      if (!state || state.hostId !== user.id) return;
+      if (!state || state.hostId.toString() !== user.id.toString()) return;
 
       const targetPlayer = state.players[userId];
       if (!targetPlayer) return;
@@ -188,7 +192,7 @@ function registerGameHandlers(io, socket) {
       });
 
       const targetSocket = Array.from(io.sockets.sockets.values()).find(
-        (s) => s.data.roomCode === code && s.user?.id === userId
+        (s) => s.data.roomCode === code && s.user?.id.toString() === userId.toString()
       );
       if (targetSocket) {
         targetSocket.emit("playerKicked", { userId, username: targetPlayer.username });
@@ -205,17 +209,13 @@ function registerGameHandlers(io, socket) {
 
   socket.on("reportQuestion", async ({ questionId, reason }) => {
     try {
-      await prisma.question.update({
-        where: { id: questionId },
-        data: { reportCount: { increment: 1 } },
-      });
+      await Question.findByIdAndUpdate(questionId, { $inc: { reportCount: 1 } });
       socket.emit("questionReported", { message: "Thanks for your report! We'll review it shortly." });
     } catch (err) {
       console.error("reportQuestion error:", err);
     }
   });
 }
-
 
 const roomTimers = {};
 
@@ -265,7 +265,7 @@ async function revealAndAdvance(io, code) {
   const correctOption = question.options.find((o) => o.isCorrect);
 
   io.to(code).emit("answerReveal", {
-    correctOptionId: correctOption?.id,
+    correctOptionId: correctOption?._id,
     explanation: question.explanation || null,
     referenceUrl: question.referenceUrl || null,
   });
@@ -287,28 +287,25 @@ async function endGame(io, code) {
   io.to(code).emit("gameOver", { finalScores: finalLeaderboard, winner });
 
   try {
-    const room = await prisma.room.findUnique({ where: { code } });
+    const room = await Room.findOne({ code });
     if (room) {
-      await prisma.room.update({ where: { code }, data: { status: "FINISHED" } });
+      await Room.updateOne({ code }, { status: "FINISHED" });
 
       for (const player of finalLeaderboard) {
         if (player.isGuest) continue;
-        await prisma.gameResult.create({
-          data: {
-            roomId: room.id,
-            userId: player.id,
-            score: player.score,
-            rank: player.rank,
-            correctAns: player.correctAns,
-            wrongAns: player.wrongAns,
-          },
+        await GameResult.create({
+          roomId: room._id,
+          userId: player.id,
+          score: player.score,
+          rank: player.rank,
+          correctAns: player.correctAns,
+          wrongAns: player.wrongAns,
         });
-        await prisma.user.update({
-          where: { id: player.id },
-          data: {
-            totalScore: { increment: player.score },
-            gamesPlayed: { increment: 1 },
-          },
+        await User.findByIdAndUpdate(player.id, {
+          $inc: {
+            totalScore: player.score,
+            gamesPlayed: 1
+          }
         });
       }
     }
@@ -333,7 +330,7 @@ async function handleLeave(io, socket, code) {
       const players = { ...s.players };
       delete players[userId];
       let newHostId = s.hostId;
-      if (s.hostId === userId) {
+      if (s.hostId.toString() === userId.toString()) {
         const remaining = Object.keys(players);
         newHostId = remaining.length > 0 ? remaining[0] : null;
       }
@@ -347,13 +344,13 @@ async function handleLeave(io, socket, code) {
 
     if (players.length === 0) {
       await deleteRoomState(code);
-      try { await prisma.room.update({ where: { code }, data: { status: "FINISHED" } }); } catch {  }
+      try { await Room.updateOne({ code }, { status: "FINISHED" }); } catch {  }
       return;
     }
 
     io.to(code).emit("roomUpdate", { players, hostId: updated.hostId });
 
-    if (updated.hostId !== state.hostId) {
+    if (updated.hostId.toString() !== state.hostId.toString()) {
       io.to(code).emit("hostChanged", { newHostId: updated.hostId, previousHostUsername: leavingUsername });
     }
     socket.data.roomCode = null;
