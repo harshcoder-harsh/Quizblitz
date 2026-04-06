@@ -72,10 +72,13 @@ router.post("/import", authMiddleware, async (req, res) => {
   }
 
   const results = [];
-  const stream = Readable.from(req.files.file.data.toString());
+  const stream = Readable.from(req.files.file.data);
 
   stream
-    .pipe(csv())
+    .pipe(csv({ 
+      mapHeaders: ({ header }) => header.trim(),
+      mapValues: ({ value }) => typeof value === 'string' ? value.trim() : value
+    }))
     .on("data", (data) => results.push(data))
     .on("end", async () => {
       try {
