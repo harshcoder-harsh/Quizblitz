@@ -97,10 +97,15 @@ function registerGameHandlers(io, socket) {
       if (playerCount < 1) return socket.emit("error", { message: "Need at least 1 player to start" });
 
       const { categoryId, difficulty, questionCount } = state.settings;
-      const questions = await getQuestionsForRoom(categoryId, difficulty, questionCount);
+      let questions = await getQuestionsForRoom(categoryId, difficulty, questionCount);
+
+      // Fallback: If not enough questions for the specific difficulty, fetch mixed difficulty
+      if (questions.length < 1) {
+        questions = await getQuestionsForRoom(categoryId, null, questionCount);
+      }
 
       if (questions.length === 0) {
-        return socket.emit("error", { message: "Not enough questions for this category and difficulty. Try a different combination." });
+        return socket.emit("error", { message: "Not enough questions for this category. Import more questions first!" });
       }
 
       await setRoomState(code, {

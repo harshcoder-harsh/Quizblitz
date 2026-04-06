@@ -25,10 +25,16 @@ async function deleteRoomState(code) {
 }
 
 async function updateRoomState(code, updater) {
-  const current = await getRoomState(code);
-  if (!current) return null;
-  const updated = updater(current);
-  await setRoomState(code, updated);
+  const entry = rooms.get(code);
+  if (!entry) return null;
+  
+  if (Date.now() > entry.expiry) {
+    rooms.delete(code);
+    return null;
+  }
+  
+  const updated = updater(entry.state);
+  entry.state = updated;
   return updated;
 }
 

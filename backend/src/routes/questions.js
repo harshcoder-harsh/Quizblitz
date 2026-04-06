@@ -98,12 +98,21 @@ router.post("/import", authMiddleware, async (req, res) => {
             });
           }
 
+          // Handle correctIndex = 1,2,3,4 (1-based) vs 0,1,2,3 (0-based)
+          let cIndex = parseInt(correctIndex);
+          if (cIndex > 0) cIndex -= 1; // Convert 1-4 to 0-3. If it was already 0-3 but they meant 1-based, this assumes standard user behavior inputs 1, 2, 3, or 4.
+
           const options = [
-            { optionText: option1, isCorrect: parseInt(correctIndex) === 0 },
-            { optionText: option2, isCorrect: parseInt(correctIndex) === 1 },
-            { optionText: option3, isCorrect: parseInt(correctIndex) === 2 },
-            { optionText: option4, isCorrect: parseInt(correctIndex) === 3 },
+            { optionText: option1, isCorrect: cIndex === 0 },
+            { optionText: option2, isCorrect: cIndex === 1 },
+            { optionText: option3, isCorrect: cIndex === 2 },
+            { optionText: option4, isCorrect: cIndex === 3 },
           ].filter(o => o.optionText);
+
+          // Failsafe: if no option is marked correct, default to the first one.
+          if (!options.some(o => o.isCorrect) && options.length > 0) {
+            options[0].isCorrect = true;
+          }
 
           await Question.create({
             categoryId: cat._id,
@@ -121,6 +130,10 @@ router.post("/import", authMiddleware, async (req, res) => {
         console.error(err);
         res.status(500).json({ error: "Failed to process CSV data" });
       }
+    })
+    .on("error", (err) => {
+      console.error(err);
+      res.status(500).json({ error: "Failed to parse CSV file" });
     });
 });
 

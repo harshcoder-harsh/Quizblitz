@@ -1,11 +1,11 @@
 const Question = require("../models/Question");
 
 async function getQuestionsForRoom(categoryId, difficulty, count) {
-  const questions = await Question.find({ 
-    categoryId, 
-    difficulty, 
-    isActive: true 
-  });
+  const filter = { categoryId, isActive: true };
+  if (difficulty) {
+    filter.difficulty = difficulty;
+  }
+  const questions = await Question.find(filter);
 
   // Shuffle
   for (let i = questions.length - 1; i > 0; i--) {
