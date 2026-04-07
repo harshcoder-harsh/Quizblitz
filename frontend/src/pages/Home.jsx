@@ -36,12 +36,12 @@ export default function Home() {
       const hdrs = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
       const { data } = await axios.get(`${API}/api/questions/categories`, hdrs);
       setCategories(data.categories);
-    } catch {}
+    } catch { }
   };
 
   useEffect(() => {
     fetchCategories();
-    axios.get(`${API}/api/rooms`).then((r) => setPublicRooms(r.data.rooms)).catch(() => {});
+    axios.get(`${API}/api/rooms`).then((r) => setPublicRooms(r.data.rooms)).catch(() => { });
   }, [token]);
 
   async function handleJoin(e) {
@@ -80,19 +80,19 @@ export default function Home() {
   async function handleCsvUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
-    
+
     const formData = new FormData();
     formData.append("file", file);
     if (importName.trim()) {
       formData.append("quizName", importName.trim());
     }
-    
+
     setImporting(true);
     try {
       const { data } = await axios.post(`${API}/api/questions/import`, formData, {
-        headers: { 
+        headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data" 
+          "Content-Type": "multipart/form-data"
         }
       });
       toast.success(data.message);
@@ -202,7 +202,7 @@ export default function Home() {
                     ) : (
                       <select className="input" value={createForm.categoryId}
                         onChange={(e) => setCreateForm({ ...createForm, categoryId: e.target.value })}>
-                          <option value="">Select a library...</option>
+                        <option value="">Select a library...</option>
                         {categories.map((c) => (
                           <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
                         ))}
@@ -231,14 +231,8 @@ export default function Home() {
                     <label className="text-sm text-gray-400 mb-1.5 block">Timer per question</label>
                     <select className="input" value={createForm.timerSeconds}
                       onChange={(e) => setCreateForm({ ...createForm, timerSeconds: e.target.value })}>
-                        {[10, 15, 20, 25, 30].map((n) => <option key={n} value={n}>{n} seconds</option>)}
+                      {[10, 15, 20, 25, 30].map((n) => <option key={n} value={n}>{n} seconds</option>)}
                     </select>
-                  </div>
-                  <div className="flex items-center gap-3 p-3 mt-2 rounded-lg bg-brand-500/10 border border-brand-500/20">
-                    <input type="checkbox" id="teacherMode" className="w-5 h-5 accent-brand-500" checked={createForm.isTeacherMode} onChange={(e) => setCreateForm({...createForm, isTeacherMode: e.target.checked})} />
-                    <label htmlFor="teacherMode" className="text-sm font-medium text-brand-300 select-none cursor-pointer">
-                      👩‍🏫 Enable Teacher Mode (Host without playing)
-                    </label>
                   </div>
                   <button type="submit" disabled={loading || !token} className="btn-primary btn w-full text-base py-3">
                     {loading ? "Creating..." : "Create Room 🏠"}

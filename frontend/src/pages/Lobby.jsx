@@ -155,19 +155,12 @@ export default function Lobby() {
           {/* Players */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="lg:col-span-2">
             <div className="card p-5">
-              <div className="flex flex-col mb-4 gap-2">
-                <div className="flex items-center justify-between">
-                  <h2 className="font-bold text-white">Players ({players.length})</h2>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                    <span className="text-xs text-gray-400">Live</span>
-                  </div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-bold text-white">Players ({players.length})</h2>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                  <span className="text-xs text-gray-400">Live</span>
                 </div>
-                {room?.isTeacherMode && isHost && (
-                  <div className="text-xs p-2 rounded bg-brand-500/20 border border-brand-500/30 text-brand-300">
-                    👩‍🏫 You are in Teacher Mode. You will manage the room without answering.
-                  </div>
-                )}
               </div>
               <PlayerList players={players} hostId={hostId} />
 

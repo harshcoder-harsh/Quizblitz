@@ -31,7 +31,6 @@ const schemas = {
     timerSeconds: z.number().int().min(10).max(30).optional().default(20),
     difficulty: z.enum(["EASY", "MEDIUM", "HARD"]).optional().default("MEDIUM"),
     questionCount: z.number().int().min(5).max(20).optional().default(10),
-    isTeacherMode: z.boolean().optional().default(false),
   }),
 };
 

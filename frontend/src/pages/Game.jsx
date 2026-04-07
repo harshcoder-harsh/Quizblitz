@@ -11,7 +11,6 @@ import AnswerOptions from "../components/AnswerOptions";
 import Timer from "../components/Timer";
 import Leaderboard from "../components/Leaderboard";
 import Explanation from "../components/Explanation";
-import TeacherDashboard from "../components/TeacherDashboard";
 
 export default function Game() {
   const { code } = useParams();
@@ -20,11 +19,9 @@ export default function Game() {
   const store = useGameStore();
   const submitTimeRef = useRef(null);
 
-  const isTeacher = store.settings?.isTeacherMode && user?.id === store.hostId;
-
   const { timeLeft, isRunning, start: startTimer, stop: stopTimer } = useTimer(
     store.timeLimit || 20,
-    () => {} // auto-advance handled server-side
+    () => { } // auto-advance handled server-side
   );
 
   // Socket: next question
@@ -74,10 +71,6 @@ export default function Game() {
 
   const isAnswered = !!store.selectedOptionId;
   const isRevealing = store.gameState === "revealing";
-
-  if (isTeacher) {
-    return <TeacherDashboard code={code} />;
-  }
 
   if (!store.currentQuestion) {
     return (
@@ -146,11 +139,10 @@ export default function Game() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
-                  className={`rounded-xl p-4 text-center font-bold text-lg border ${
-                    store.answerResult.correct
+                  className={`rounded-xl p-4 text-center font-bold text-lg border ${store.answerResult.correct
                       ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400"
                       : "bg-red-500/15 border-red-500/40 text-red-400"
-                  }`}
+                    }`}
                 >
                   {store.answerResult.correct
                     ? `✓ Correct! +${store.answerResult.points} pts`
